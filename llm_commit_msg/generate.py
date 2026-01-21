@@ -5,6 +5,7 @@
 
 import json
 import os
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -184,6 +185,7 @@ def generate(
     model: str,
     api_token_file: Path | None,
     api_endpoint: str,
+    show_off: float,
 ) -> None:
     """Generate a commit message."""
     if commented_out:
@@ -196,6 +198,8 @@ def generate(
             if commented_out:
                 out = out.replace('\n', '\n#')
             print(out, end='', flush=True)  # noqa: T201
+            if show_off:
+                time.sleep(show_off)
     except Exception as e:  # noqa: BLE001
         error = f'ERROR: {e}'
         if commented_out:
