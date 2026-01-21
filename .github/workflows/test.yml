@@ -1,0 +1,44 @@
+name: test
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test-nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix build --no-link
+      - run: nix develop -i -c pytest -vvv
+      - run: nix flake check --all-systems
+
+  test-pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip3 install -U setuptools pip '.[test]'
+      - run: pytest -vvv
+
+  lint-nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix develop -i -c pre-commit run -av
+
+  lint-pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip3 install -U setuptools pip '.[test,lint]'
+      - run: pre-commit run -av

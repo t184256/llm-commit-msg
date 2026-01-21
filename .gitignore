@@ -1,0 +1,8 @@
+.direnv
+result
+*.pyc
+**/__pycache__
+htmlcov/
+.coverage
+/*.egg-info/
+venv
