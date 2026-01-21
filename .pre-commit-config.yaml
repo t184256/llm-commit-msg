@@ -35,7 +35,7 @@ repos:
 
   - id: codespell
     name: codespell
-    entry: codespell --builtin clear,rare,informal,usage,code,names,en-GB_to_en-US
+    entry: codespell --builtin clear,rare,informal,usage,code,names,en-GB_to_en-US --ignore-words-list stdio
     language: system
 
   - id: actionlint

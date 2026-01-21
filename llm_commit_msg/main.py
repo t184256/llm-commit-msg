@@ -35,7 +35,7 @@ def main(ctx: click.Context) -> None:
     '--show-off',
     default=0,
     type=float,
-    help='Slow down the output (seconds between the chunks).'
+    help='Slow down the output (seconds between the chunks).',
 )
 def _generate_cmd(
     *,
