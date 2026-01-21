@@ -110,7 +110,7 @@ def _generate_prompt() -> str:
     return f"""You are a commit message generator.
 Suggest a concise commit message for the following diff changes.
 
-Match the style of these recent commits from the repository:
+A handful of recent commits from the repository, in triple backticks:
 {lookback_commit_messages}
 
 Files changed:
