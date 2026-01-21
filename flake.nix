@@ -56,6 +56,12 @@
             drv = llm-commit-msg;
             exePath = "/bin/llm-commit-msg";
           };
+
+          llm-commit-msg-nvim = pkgs.vimUtils.buildVimPlugin {
+            pname = "llm-commit-msg-nvim";
+            version = "0.0.1";
+            src = ./nvim;
+          };
         in
         {
           devShells.default = pkgs.mkShell {
@@ -74,6 +80,7 @@
             '';
           };
           packages.llm-commit-msg = llm-commit-msg;
+          packages.neovim-plugin = llm-commit-msg-nvim;
           packages.default = llm-commit-msg;
           apps.llm-commit-msg = app;
           apps.default = app;

@@ -33,6 +33,10 @@ optional-dependencies.lint = [
   "pre-commit-hooks",
 ]
 
+[tool.setuptools.package-dir]
+llm_commit_msg = "llm_commit_msg"
+# ignore nvim/
+
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
 
