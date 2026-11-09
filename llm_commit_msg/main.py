@@ -26,6 +26,12 @@ def main(ctx: click.Context) -> None:
 )
 @click.option('--model', default='gpt-oss:20b', help='Model to use.')
 @click.option(
+    '--max-thinking-tokens',
+    type=int,
+    default=None,
+    help='Cap reasoning tokens for thinking models.',
+)
+@click.option(
     '--api-token-file',
     type=click.Path(path_type=Path, readable=True),
     help='Path to API token file (alternative to OPENAI_API_KEY envvar).',
@@ -37,13 +43,14 @@ def main(ctx: click.Context) -> None:
     type=float,
     help='Slow down the output (seconds between the chunks).',
 )
-def _generate_cmd(
+def _generate_cmd(  # ruff: ignore[too-many-arguments]
     *,
     commented_out: bool,
     model: str,
     api_token_file: Path | None,
     api_endpoint: str,
     show_off: float,
+    max_thinking_tokens: int | None,
 ) -> None:
     llm_commit_msg.generate.generate(
         commented_out=commented_out,
@@ -51,6 +58,7 @@ def _generate_cmd(
         api_token_file=api_token_file,
         api_endpoint=api_endpoint,
         show_off=show_off,
+        max_thinking_tokens=max_thinking_tokens,
     )
 
 

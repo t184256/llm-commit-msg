@@ -141,11 +141,24 @@ def _get_api_key(api_token_file: Path | None) -> str:
     return api_token_file.read_text(encoding='utf-8').strip()
 
 
+def _thinking_params(max_thinking_tokens: int | None) -> dict[str, object]:
+    if max_thinking_tokens is None:
+        return {}
+    if max_thinking_tokens <= 0:
+        return {'chat_template_kwargs': {'enable_thinking': False}}
+    return {
+        'chat_template_kwargs': {'enable_thinking': True},
+        'thinking_budget_tokens': max_thinking_tokens,
+    }
+
+
 def _query_llm(
+    *,
     model: str,
     api_endpoint: str,
     api_token_file: Path | None,
     prompt: str,
+    max_thinking_tokens: int | None = None,
 ) -> Iterator[str]:
     api_key = _get_api_key(api_token_file)
     with requests.post(
@@ -159,6 +172,7 @@ def _query_llm(
             'messages': [{'role': 'user', 'content': prompt}],
             'max_tokens': MAX_TOKENS,
             'stream': True,
+            **_thinking_params(max_thinking_tokens),
         },
         timeout=30,
         stream=True,
@@ -194,20 +208,27 @@ def _print_chunks(
             time.sleep(show_off)
 
 
-def generate(
+def generate(  # ruff: ignore[too-many-arguments]
     *,
     commented_out: bool,
     model: str,
     api_token_file: Path | None,
     api_endpoint: str,
     show_off: float,
+    max_thinking_tokens: int | None = None,
 ) -> None:
     """Generate a commit message."""
     if commented_out:
         print('#', end='', flush=True)  # ruff: ignore[print]
     try:
         prompt = _generate_prompt()
-        chunks = _query_llm(model, api_endpoint, api_token_file, prompt)
+        chunks = _query_llm(
+            model=model,
+            api_endpoint=api_endpoint,
+            api_token_file=api_token_file,
+            prompt=prompt,
+            max_thinking_tokens=max_thinking_tokens,
+        )
         _print_chunks(chunks, commented_out=commented_out, show_off=show_off)
     except Exception as e:  # ruff: ignore[blind-except]
         error = f'ERROR: {e}'
