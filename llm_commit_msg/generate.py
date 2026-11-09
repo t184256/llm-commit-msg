@@ -148,7 +148,7 @@ def _query_llm(
     prompt: str,
 ) -> Iterator[str]:
     api_key = _get_api_key(api_token_file)
-    resp = requests.post(
+    with requests.post(
         f'{api_endpoint}/v1/chat/completions',
         headers={
             'authorization': f'Bearer {api_key}',
@@ -162,21 +162,21 @@ def _query_llm(
         },
         timeout=30,
         stream=True,
-    )
-    resp.raise_for_status()
-    for line in resp.iter_lines():
-        if not line:
-            continue
-        decoded = line.decode('utf-8')
-        if not decoded.startswith('data: '):
-            continue
-        data = decoded.removeprefix('data: ')
-        if data == '[DONE]':
-            break
-        chunk = json.loads(data)
-        content = chunk['choices'][0]['delta'].get('content', '')
-        if content:
-            yield content
+    ) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            decoded = line.decode('utf-8')
+            if not decoded.startswith('data: '):
+                continue
+            data = decoded.removeprefix('data: ')
+            if data == '[DONE]':
+                break
+            chunk = json.loads(data)
+            content = chunk['choices'][0]['delta'].get('content', '')
+            if content:
+                yield content
 
 
 def _print_chunks(
