@@ -11,7 +11,7 @@ from pathlib import Path
 
 import git
 import requests
-import unidiff  # type: ignore[import-untyped]
+from unidiff.patch import PatchedFile, PatchSet
 
 MAX_TOKENS = 2**16
 MAX_STAGED_DIFF_CONTEXT = 9
@@ -56,7 +56,7 @@ def _get_staged_files(repo: git.Repo) -> str:
 
 
 def _truncate_patched_file(
-    patched_file: unidiff.PatchedFile,
+    patched_file: PatchedFile,
     keep_lines: int,
 ) -> str:
     file_diff = str(patched_file)
@@ -81,7 +81,7 @@ def _get_staged_diff(repo: git.Repo) -> str:
     max_single_file_chars = MAX_STAGED_DIFF_CHARS // 2
     for context in range(MAX_STAGED_DIFF_CONTEXT, 1, -1):
         result = str(repo.git.diff('--staged', f'-U{context}'))
-        patch_set = unidiff.PatchSet(result)
+        patch_set = PatchSet(result)
         keep_lines = 2 * context
 
         processed_diffs = []
@@ -179,6 +179,21 @@ def _query_llm(
             yield content
 
 
+def _print_chunks(
+    chunks: Iterator[str],
+    *,
+    commented_out: bool,
+    show_off: float,
+) -> None:
+    for chunk in chunks:
+        out = chunk
+        if commented_out:
+            out = out.replace('\n', '\n#')
+        print(out, end='', flush=True)  # ruff: ignore[print]
+        if show_off:
+            time.sleep(show_off)
+
+
 def generate(
     *,
     commented_out: bool,
@@ -189,20 +204,14 @@ def generate(
 ) -> None:
     """Generate a commit message."""
     if commented_out:
-        print('#', end='', flush=True)  # noqa: T201
+        print('#', end='', flush=True)  # ruff: ignore[print]
     try:
         prompt = _generate_prompt()
         chunks = _query_llm(model, api_endpoint, api_token_file, prompt)
-        for chunk in chunks:
-            out = chunk
-            if commented_out:
-                out = out.replace('\n', '\n#')
-            print(out, end='', flush=True)  # noqa: T201
-            if show_off:
-                time.sleep(show_off)
-    except Exception as e:  # noqa: BLE001
+        _print_chunks(chunks, commented_out=commented_out, show_off=show_off)
+    except Exception as e:  # ruff: ignore[blind-except]
         error = f'ERROR: {e}'
         if commented_out:
             error = error.replace('\n', '\n#')
-        print(error)  # noqa: T201
-    print(flush=True)  # noqa: T201
+        print(error)  # ruff: ignore[print]
+    print(flush=True)  # ruff: ignore[print]
