@@ -17,8 +17,7 @@ MAX_STAGED_DIFF_CONTEXT = 9
 MAX_STAGED_DIFF_CHARS = 80 * 512
 MAX_STAGED_FILES = 48
 MAX_STAGED_FILES_CHARS = 80 * MAX_STAGED_FILES
-MAX_LOOKBACK_COMMITS = 10
-MAX_LOOKBACK_CHARS = 80 * 10 * MAX_LOOKBACK_COMMITS
+MAX_LOOKBACK_CHARS_PER_COMMIT = 80 * 10
 
 
 def _get_repo() -> git.Repo:
@@ -31,16 +30,17 @@ def _truncate(s: str, max_len: int) -> str:
     return s[: max_len - 3] + '...'
 
 
-def _gather_lookback_commit_messages(repo: git.Repo) -> str:
-    for count in range(MAX_LOOKBACK_COMMITS, 2, -1):
-        messages = [
+def _gather_lookback_commit_messages(repo: git.Repo, messages: int) -> str:
+    max_chars = MAX_LOOKBACK_CHARS_PER_COMMIT * messages
+    for count in range(messages, 2, -1):
+        blocks = [
             f'```\n{commit.message.strip()!s}\n```\n\n'
             for commit in repo.iter_commits(max_count=count)
         ]
-        result = '\n'.join(messages)
-        if len(result) <= MAX_LOOKBACK_CHARS:
+        result = '\n'.join(blocks)
+        if len(result) <= max_chars:
             break
-    return _truncate(result, MAX_LOOKBACK_CHARS)  # last resort: truncation
+    return _truncate(result, max_chars)  # last resort: truncation
 
 
 def _get_staged_files(repo: git.Repo) -> str:
@@ -97,9 +97,12 @@ def _get_staged_diff(repo: git.Repo) -> str:
     return _truncate(result, MAX_STAGED_DIFF_CHARS)  # last resort: truncation
 
 
-def _generate_prompt() -> str:
+def _generate_prompt(lookback_messages: int) -> str:
     repo = _get_repo()
-    lookback_commit_messages = _gather_lookback_commit_messages(repo)
+    lookback_commit_messages = _gather_lookback_commit_messages(
+        repo,
+        lookback_messages,
+    )
     staged_files = _get_staged_files(repo)
     staged_diff = _get_staged_diff(repo)
 
@@ -215,12 +218,13 @@ def generate(  # ruff: ignore[too-many-arguments]
     show_off: float,
     max_thinking_tokens: int,
     max_result_tokens: int,
+    lookback_messages: int,
 ) -> None:
     """Generate a commit message."""
     if commented_out:
         print('#', end='', flush=True)  # ruff: ignore[print]
     try:
-        prompt = _generate_prompt()
+        prompt = _generate_prompt(lookback_messages)
         chunks = _query_llm(
             model=model,
             api_endpoint=api_endpoint,

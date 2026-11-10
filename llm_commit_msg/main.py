@@ -43,6 +43,13 @@ def main(ctx: click.Context) -> None:
     type=click.Path(path_type=Path, readable=True),
     help='Path to API token file (alternative to OPENAI_API_KEY envvar).',
 )
+@click.option(
+    '--lookback-messages',
+    type=click.IntRange(min=1),
+    default=25,
+    show_default=True,
+    help='Send ~N recent commits for context as examples.',
+)
 @click.option('--api-endpoint', required=True, help='API endpoint URL.')
 @click.option(
     '--show-off',
@@ -59,6 +66,7 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
     show_off: float,
     max_thinking_tokens: int,
     max_result_tokens: int,
+    lookback_messages: int,
 ) -> None:
     llm_commit_msg.generate.generate(
         commented_out=commented_out,
@@ -68,6 +76,7 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
         show_off=show_off,
         max_thinking_tokens=max_thinking_tokens,
         max_result_tokens=max_result_tokens,
+        lookback_messages=lookback_messages,
     )
 
 
