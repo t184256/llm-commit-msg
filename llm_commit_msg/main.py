@@ -50,6 +50,13 @@ def main(ctx: click.Context) -> None:
     show_default=True,
     help='Send ~N recent commits for context as examples.',
 )
+@click.option(
+    '--lookback-messages-stickiness',
+    type=click.IntRange(min=1),
+    default=10,
+    show_default=True,
+    help='Make the lookback window stick for prefix caching; 1 always slides.',
+)
 @click.option('--api-endpoint', required=True, help='API endpoint URL.')
 @click.option(
     '--show-off',
@@ -67,6 +74,7 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
     max_thinking_tokens: int,
     max_result_tokens: int,
     lookback_messages: int,
+    lookback_messages_stickiness: int,
 ) -> None:
     llm_commit_msg.generate.generate(
         commented_out=commented_out,
@@ -77,6 +85,7 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
         max_thinking_tokens=max_thinking_tokens,
         max_result_tokens=max_result_tokens,
         lookback_messages=lookback_messages,
+        lookback_messages_stickiness=lookback_messages_stickiness,
     )
 
 

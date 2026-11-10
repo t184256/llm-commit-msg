@@ -18,6 +18,8 @@ MAX_STAGED_DIFF_CHARS = 80 * 512
 MAX_STAGED_FILES = 48
 MAX_STAGED_FILES_CHARS = 80 * MAX_STAGED_FILES
 MAX_LOOKBACK_CHARS_PER_COMMIT = 80 * 10
+ANCHOR_HASH_PREFIX = 'aa'  # encountering a new one invalidates prefix caching
+ANCHOR_SEARCH_LIMIT = 2048  # but search must complete within reasonable time
 
 
 def _get_repo() -> git.Repo:
@@ -30,16 +32,40 @@ def _truncate(s: str, max_len: int) -> str:
     return s[: max_len - 3] + '...'
 
 
-def _gather_lookback_commit_messages(repo: git.Repo, messages: int) -> str:
-    max_chars = MAX_LOOKBACK_CHARS_PER_COMMIT * messages
-    for count in range(messages, 2, -1):
-        blocks = [
-            f'```\n{commit.message.strip()!s}\n```\n\n'
-            for commit in repo.iter_commits(max_count=count)
-        ]
-        result = '\n'.join(blocks)
-        if len(result) <= max_chars:
+def _aligned_refs(repo: git.Repo, stickiness: int, messages: int) -> list[str]:
+    # get a peek into the past hashes, limited in case repos are large
+    opts = ('--first-parent', f'--max-count={ANCHOR_SEARCH_LIMIT}', 'HEAD')
+    hashes: list[str] = repo.git.rev_list(*opts).split()
+    if len(hashes) <= messages:
+        return hashes[::-1]
+
+    # walk into the past to search for an anchor: a relatively unusual prefix
+    anchor = messages
+    for sha in hashes[messages:]:
+        if sha.startswith(ANCHOR_HASH_PREFIX):
             break
+        anchor += 1
+
+    # walk into the future to align the start of the lookback
+    # on a grid counted from anchor
+    aligned_start = anchor
+    while aligned_start > messages:
+        aligned_start -= stickiness
+    return hashes[aligned_start::-1]
+
+
+def _gather_lookback_commit_messages(
+    repo: git.Repo,
+    messages: int,
+    stickiness: int,
+) -> str:
+    max_chars = MAX_LOOKBACK_CHARS_PER_COMMIT * messages
+    result = ''
+    for hash_ in _aligned_refs(repo, stickiness, messages):
+        msg = f'```{repo.commit(hash_).message.strip()!s}```\n\n'
+        if len(result) + len(msg) > max_chars:
+            break
+        result += msg + '\n'
     return _truncate(result, max_chars)  # last resort: truncation
 
 
@@ -97,11 +123,12 @@ def _get_staged_diff(repo: git.Repo) -> str:
     return _truncate(result, MAX_STAGED_DIFF_CHARS)  # last resort: truncation
 
 
-def _generate_prompt(lookback_messages: int) -> str:
+def _generate_prompt(lookback_messages: int, stickiness: int) -> str:
     repo = _get_repo()
     lookback_commit_messages = _gather_lookback_commit_messages(
         repo,
         lookback_messages,
+        stickiness,
     )
     staged_files = _get_staged_files(repo)
     staged_diff = _get_staged_diff(repo)
@@ -219,12 +246,16 @@ def generate(  # ruff: ignore[too-many-arguments]
     max_thinking_tokens: int,
     max_result_tokens: int,
     lookback_messages: int,
+    lookback_messages_stickiness: int,
 ) -> None:
     """Generate a commit message."""
     if commented_out:
         print('#', end='', flush=True)  # ruff: ignore[print]
     try:
-        prompt = _generate_prompt(lookback_messages)
+        prompt = _generate_prompt(
+            lookback_messages,
+            lookback_messages_stickiness,
+        )
         chunks = _query_llm(
             model=model,
             api_endpoint=api_endpoint,
