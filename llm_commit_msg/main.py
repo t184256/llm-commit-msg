@@ -28,8 +28,15 @@ def main(ctx: click.Context) -> None:
 @click.option(
     '--max-thinking-tokens',
     type=int,
-    default=None,
+    default=1024,
     help='Cap reasoning tokens for thinking models.',
+)
+@click.option(
+    '--max-result-tokens',
+    type=int,
+    default=4096,
+    show_default=True,
+    help='Max tokens for the commit message itself, excluding thinking.',
 )
 @click.option(
     '--api-token-file',
@@ -50,7 +57,8 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
     api_token_file: Path | None,
     api_endpoint: str,
     show_off: float,
-    max_thinking_tokens: int | None,
+    max_thinking_tokens: int,
+    max_result_tokens: int,
 ) -> None:
     llm_commit_msg.generate.generate(
         commented_out=commented_out,
@@ -59,6 +67,7 @@ def _generate_cmd(  # ruff: ignore[too-many-arguments]
         api_endpoint=api_endpoint,
         show_off=show_off,
         max_thinking_tokens=max_thinking_tokens,
+        max_result_tokens=max_result_tokens,
     )
 
 

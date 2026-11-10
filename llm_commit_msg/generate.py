@@ -13,7 +13,6 @@ import git
 import requests
 from unidiff.patch import PatchedFile, PatchSet
 
-MAX_TOKENS = 2**16
 MAX_STAGED_DIFF_CONTEXT = 9
 MAX_STAGED_DIFF_CHARS = 80 * 512
 MAX_STAGED_FILES = 48
@@ -141,9 +140,7 @@ def _get_api_key(api_token_file: Path | None) -> str:
     return api_token_file.read_text(encoding='utf-8').strip()
 
 
-def _thinking_params(max_thinking_tokens: int | None) -> dict[str, object]:
-    if max_thinking_tokens is None:
-        return {}
+def _thinking_params(max_thinking_tokens: int) -> dict[str, object]:
     if max_thinking_tokens <= 0:
         return {'chat_template_kwargs': {'enable_thinking': False}}
     return {
@@ -152,13 +149,14 @@ def _thinking_params(max_thinking_tokens: int | None) -> dict[str, object]:
     }
 
 
-def _query_llm(
+def _query_llm(  # ruff: ignore[too-many-arguments]
     *,
     model: str,
     api_endpoint: str,
     api_token_file: Path | None,
     prompt: str,
-    max_thinking_tokens: int | None = None,
+    max_thinking_tokens: int,
+    max_result_tokens: int,
 ) -> Iterator[str]:
     api_key = _get_api_key(api_token_file)
     with requests.post(
@@ -170,7 +168,7 @@ def _query_llm(
         json={
             'model': model,
             'messages': [{'role': 'user', 'content': prompt}],
-            'max_tokens': MAX_TOKENS,
+            'max_tokens': max_thinking_tokens + max_result_tokens,
             'stream': True,
             **_thinking_params(max_thinking_tokens),
         },
@@ -215,7 +213,8 @@ def generate(  # ruff: ignore[too-many-arguments]
     api_token_file: Path | None,
     api_endpoint: str,
     show_off: float,
-    max_thinking_tokens: int | None = None,
+    max_thinking_tokens: int,
+    max_result_tokens: int,
 ) -> None:
     """Generate a commit message."""
     if commented_out:
@@ -228,6 +227,7 @@ def generate(  # ruff: ignore[too-many-arguments]
             api_token_file=api_token_file,
             prompt=prompt,
             max_thinking_tokens=max_thinking_tokens,
+            max_result_tokens=max_result_tokens,
         )
         _print_chunks(chunks, commented_out=commented_out, show_off=show_off)
     except Exception as e:  # ruff: ignore[blind-except]
